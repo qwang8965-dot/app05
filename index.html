@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 禁用雙擊縮放與模擬原生 App 視口 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>我們這一家 | Atashin'chi 角色圖鑑</title>
+
+  <!-- PWA 必要 Meta 標籤 -->
+  <meta id="meta-theme-color" name="theme-color" content="#F4A261" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="我們這一家圖鑑" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="description" content="我們這一家（Atashin'chi）角色圖鑑展示 PWA 應用程式" />
+
+  <!-- 動態掛載的 Manifest 與 Apple Touch Icon 佔位符 -->
+  <link id="pwa-manifest" rel="manifest" href="" />
+  <link id="apple-touch-icon" rel="apple-touch-icon" href="" />
+
+  <!-- 引入 Tailwind CSS 與 Google Fonts (Noto Sans TC & Zen Maru Gothic) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans TC"', 'sans-serif'],
+            rounded: ['"Zen Maru Gothic"', '"Noto Sans TC"', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    :root {
+      --bg-from: #FFF1E6;
+      --bg-via: #FDE2D2;
+      --bg-to: #F8C8B0;
+      --accent-primary: #E76F51;
+      --accent-secondary: #F4A261;
+      --accent-soft: rgba(231, 111, 81, 0.14);
+      --accent-border: rgba(231, 111, 81, 0.28);
+    }
+
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overscroll-behavior-y: none;
+      user-select: none;
+      -webkit-user-select: none;
+      background-color: #EAE6E1;
+    }
+
+    /* 背景動態漸層平滑過渡 */
+    .app-canvas {
+      background: linear-gradient(155deg, var(--bg-from) 0%, var(--bg-via) 52%, var(--bg-to) 100%);
+      transition: background 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* 桌面端手機外框模擬 */
+    @media (min-width: 640px) {
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: radial-gradient(circle at 20% 20%, #f5f2ed 0%, #dcd6ce 100%);
+      }
+      .device-frame {
+        height: min(860px, 94vh);
+        border-radius: 3rem;
+        box-shadow:
+          0 25px 60px -15px rgba(30, 25, 20, 0.25),
+          0 0 0 10px #ffffff,
+          0 0 0 11px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+      }
+    }
+
+    @media (max-width: 639px) {
+      .device-frame {
+        height: 100dvh;
+        border-radius: 0;
+      }
+    }
+
+    /* 安全區域留白 */
+    .safe-top {
+      padding-top: max(1rem, env(safe-area-inset-top));
+    }
+    .safe-bottom {
+      padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+
+    /* 隱藏捲軸但保留流暢滾動 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* 玻璃擬態卡片 */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      box-shadow: 0 10px 30px -8px rgba(31, 38, 135, 0.07);
+    }
+
+    /* 角色切換淡入與滑動動畫 */
+    @keyframes slideInRight {
+      0% {
+        opacity: 0;
+        transform: translateX(26px) scale(0.985);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+      }
+    }
+
+    @keyframes slideInLeft {
+      0% {
+        opacity: 0;
+        transform: translateX(-26px) scale(0.985);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+      }
+    }
+
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-5px); }
+    }
+
+    .anim-slide-right {
+      animation: slideInRight 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .anim-slide-left {
+      animation: slideInLeft 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    .avatar-float {
+      animation: floatSlow 3.8s ease-in-out infinite;
+    }
+
+    /* 動態主題強調色工具類別 */
+    .theme-text {
+      color: var(--accent-primary);
+      transition: color 0.45s ease;
+    }
+    .theme-bg {
+      background-color: var(--accent-primary);
+      transition: background-color 0.45s ease;
+    }
+    .theme-bg-soft {
+      background-color: var(--accent-soft);
+      transition: background-color 0.45s ease;
+    }
+    .theme-border {
+      border-color: var(--accent-border);
+      transition: border-color 0.45s ease;
+    }
+    .theme-gradient-badge {
+      background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary));
+      transition: background 0.45s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 手機外框 / 滿版容器 -->
+  <main id="app-shell" class="device-frame app-canvas relative w-full max-w-md mx-auto flex flex-col overflow-hidden text-slate-800">
+
+    <!-- 1. 頂部標題列 (Header) -->
+    <header class="safe-top px-5 pb-2.5 flex items-center justify-between z-20 shrink-0">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-2.5 h-2.5 rounded-full theme-bg shadow-sm"></span>
+          <h1 class="font-rounded text-xl font-black tracking-tight text-slate-800">我們這一家</h1>
+        </div>
+        <p class="text-[11px] font-semibold tracking-wider uppercase text-slate-500/90 mt-0.5">
+          Atashin'chi Character Guide
+        </p>
+      </div>
+
+      <!-- 右側功能按鈕：音效開關 & 安裝 App 提示 -->
+      <div class="flex items-center gap-2">
+        <button
+          id="btn-sound"
+          type="button"
+          aria-label="切換按鍵音效"
+          class="w-9 h-9 rounded-full glass-card flex items-center justify-center text-slate-700 active:scale-90 transition-transform shadow-sm"
+          title="音效開關"
+        >
+          <!-- 音效開啟 SVG -->
+          <svg id="icon-sound-on" class="w-4 h-4 theme-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+          <!-- 音效靜音 SVG -->
+          <svg id="icon-sound-off" class="w-4 h-4 text-slate-400 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <line x1="23" y1="9" x2="17" y2="15"></line>
+            <line x1="17" y1="9" x2="23" y2="15"></line>
+          </svg>
+        </button>
+
+        <button
+          id="btn-install"
+          type="button"
+          class="px-3 py-1.5 rounded-full glass-card flex items-center gap-1.5 text-xs font-bold text-slate-700 active:scale-95 transition-transform shadow-sm"
+        >
+          <svg class="w-3.5 h-3.5 theme-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>安裝 App</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 2. 角色切換導覽列 (Segmented Control / Pills) -->
+    <nav class="px-5 py-2 z-20 shrink-0" aria-label="角色選擇">
+      <div class="relative grid grid-cols-4 p-1.5 rounded-2xl bg-white/60 backdrop-blur-md border border-white/80 shadow-inner">
+        <!-- 動態膠囊高亮背景 (Active Pill) -->
+        <div
+          id="nav-pill"
+          class="absolute top-1.5 bottom-1.5 left-1.5 w-[calc(25%-3px)] rounded-xl theme-gradient-badge shadow-md transition-transform duration-300 ease-out"
+        ></div>
+
+        <button type="button" data-index="0" class="nav-btn relative z-10 py-2 text-xs font-extrabold rounded-xl transition-all duration-300 text-white scale-105">
+          花媽
+        </button>
+        <button type="button" data-index="1" class="nav-btn relative z-10 py-2 text-xs font-bold rounded-xl transition-all duration-300 text-slate-600">
+          花爸
+        </button>
+        <button type="button" data-index="2" class="nav-btn relative z-10 py-2 text-xs font-bold rounded-xl transition-all duration-300 text-slate-600">
+          橘子
+        </button>
+        <button type="button" data-index="3" class="nav-btn relative z-10 py-2 text-xs font-bold rounded-xl transition-all duration-300 text-slate-600">
+          柚子
+        </button>
+      </div>
+    </nav>
+
+    <!-- 3. 主要滑動內容區 (支援 Touch Swipe 左右切換) -->
+    <div id="swipe-area" class="flex-1 overflow-y-auto no-scrollbar px-5 pt-2 safe-bottom">
+      <div id="character-stage" class="space-y-4 pb-4">
+
+        <!-- 角色視覺展示卡片 (Hero Card) -->
+        <section class="glass-card rounded-3xl p-5 relative overflow-hidden">
+          <!-- 裝飾性背景光暈 -->
+          <div class="absolute -top-12 -right-12 w-36 h-36 rounded-full theme-bg-soft blur-2xl pointer-events-none"></div>
+          <div class="absolute -bottom-10 -left-10 w-32 h-32 rounded-full theme-bg-soft blur-xl pointer-events-none"></div>
+
+          <!-- 頂部小徽章與滑動提示 -->
+          <div class="flex items-center justify-between mb-2 relative z-10">
+            <span id="hero-role-badge" class="px-3 py-1 rounded-full text-[11px] font-bold tracking-wide theme-bg-soft theme-text border theme-border">
+              一家之主（實質）
+            </span>
+            <span class="text-[11px] font-medium text-slate-400 flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 8L22 12L18 16"></path>
+                <path d="M6 8L2 12L6 16"></path>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+              </svg>
+              左右滑動切換
+            </span>
+          </div>
+
+          <!-- 中央角色專屬自繪向量 SVG 插畫 -->
+          <div class="my-2 flex justify-center items-center relative z-10">
+            <div id="hero-avatar-container" class="w-44 h-44 rounded-3xl flex items-center justify-center shadow-inner border-2 border-white/90 avatar-float overflow-hidden">
+              <!-- 由 JS 動態注入精緻 SVG -->
+            </div>
+          </div>
+
+          <!-- 圖片下方疊加角色名稱與日文原名標籤 -->
+          <div class="text-center mt-3 relative z-10">
+            <div class="inline-flex items-baseline gap-2 justify-center flex-wrap">
+              <h2 id="hero-name" class="font-rounded text-2xl font-black text-slate-800 tracking-tight">
+                花媽
+              </h2>
+              <span id="hero-alias" class="text-xs font-bold text-slate-500">
+                （花太太／花師奶）
+              </span>
+            </div>
+            <div class="mt-1.5 flex justify-center">
+              <span id="hero-jp-name" class="px-3.5 py-0.5 rounded-full bg-white/90 border border-slate-200/80 text-xs font-bold tracking-widest text-slate-600 shadow-xs">
+                母（立花 翠 / Tachibana Midori）
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 角色詳細檔案區 (Profile Details)：分為三個質感資訊區塊 -->
+
+        <!-- 區塊一：基本資料與背景（標籤式呈現） -->
+        <section class="glass-card rounded-3xl p-4 space-y-3">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-xl theme-bg-soft flex items-center justify-center theme-text">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </div>
+            <h3 class="font-rounded text-sm font-extrabold text-slate-800">基本資料與背景</h3>
+          </div>
+
+          <div id="profile-tags" class="flex flex-wrap gap-2">
+            <!-- 標籤動態生成 -->
+          </div>
+          <p id="profile-background" class="text-xs leading-relaxed text-slate-600 bg-white/60 rounded-2xl p-3 border border-white">
+            <!-- 背景描述動態生成 -->
+          </p>
+        </section>
+
+        <!-- 區塊二：性格特徵（重點關鍵字高亮） -->
+        <section class="glass-card rounded-3xl p-4 space-y-2.5">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-xl theme-bg-soft flex items-center justify-center theme-text">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+            </div>
+            <h3 class="font-rounded text-sm font-extrabold text-slate-800">性格特徵</h3>
+          </div>
+
+          <p id="profile-personality" class="text-[13px] leading-6 text-slate-700 font-normal">
+            <!-- 含關鍵字高亮之性格描述 -->
+          </p>
+        </section>
+
+        <!-- 區塊三：經典名言 / 招牌動作（引用卡片樣式） -->
+        <section class="glass-card rounded-3xl p-4 space-y-2.5 relative overflow-hidden">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-xl theme-bg-soft flex items-center justify-center theme-text">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <h3 class="font-rounded text-sm font-extrabold text-slate-800">經典名言 / 招牌動作</h3>
+          </div>
+
+          <blockquote class="relative rounded-2xl p-3.5 theme-bg-soft border-l-4 theme-border">
+            <span class="absolute top-1 right-3 font-serif text-4xl opacity-20 theme-text font-black">”</span>
+            <ul id="profile-signatures" class="space-y-1.5 text-xs font-bold text-slate-800 relative z-10">
+              <!-- 招牌特色項目 -->
+            </ul>
+          </blockquote>
+        </section>
+
+        <!-- 底部頁面指示器與快捷切換 -->
+        <div class="flex items-center justify-between pt-1 px-1">
+          <button id="btn-prev" type="button" class="px-3.5 py-2 rounded-2xl glass-card text-xs font-bold text-slate-600 flex items-center gap-1 active:scale-95 transition-transform">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            上一位
+          </button>
+
+          <div id="dots-indicator" class="flex items-center gap-2">
+            <span class="w-5 h-2 rounded-full theme-bg transition-all duration-300"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-400/40 transition-all duration-300"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-400/40 transition-all duration-300"></span>
+            <span class="w-2 h-2 rounded-full bg-slate-400/40 transition-all duration-300"></span>
+          </div>
+
+          <button id="btn-next" type="button" class="px-3.5 py-2 rounded-2xl glass-card text-xs font-bold text-slate-600 flex items-center gap-1 active:scale-95 transition-transform">
+            下一位
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 自訂 PWA 安裝說明提示框 (取代 alert，符合原生質感) -->
+    <div id="install-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+      <div class="w-full max-w-sm bg-white rounded-3xl p-5 shadow-2xl border border-slate-100 transform transition-all">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-2xl theme-gradient-badge flex items-center justify-center text-white font-rounded font-black text-lg shadow-md">
+              花
+            </div>
+            <div>
+              <h4 class="font-rounded font-extrabold text-slate-800 text-base">安裝「我們這一家圖鑑」</h4>
+              <p class="text-[11px] text-slate-500">Progressive Web App 離線版</p>
+            </div>
+          </div>
+          <button id="btn-close-modal" type="button" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200">
+            ✕
+          </button>
+        </div>
+
+        <p id="install-modal-desc" class="text-xs text-slate-600 leading-relaxed mb-4">
+          將此圖鑑加入手機主畫面，即可享受全螢幕原生 App 體驗，並在無網路狀態下隨時瀏覽花家成員資料！
+        </p>
+
+        <div class="bg-slate-50 rounded-2xl p-3 space-y-2 text-xs text-slate-700 mb-4 border border-slate-100">
+          <div class="flex items-start gap-2">
+            <span class="font-bold theme-text">iOS Safari：</span>
+            <span>點擊底部「分享」圖示，選擇「加入主畫面」。</span>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="font-bold theme-text">Android / Chrome：</span>
+            <span>點擊瀏覽器右上角選單，選擇「安裝應用程式」。</span>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="btn-trigger-prompt" type="button" class="hidden flex-1 py-2.5 rounded-2xl theme-gradient-badge text-white text-xs font-bold shadow-md active:scale-95 transition-transform">
+            立即安裝到桌面
+          </button>
+          <button id="btn-modal-ok" type="button" class="flex-1 py-2.5 rounded-2xl bg-slate-800 text-white text-xs font-bold active:scale-95 transition-transform">
+            我知道了
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    /**
+     * ============================================================================
+     * 1. 角色完整資料庫與專屬主題色彩、自繪向量 SVG 插畫
+     * ============================================================================
+     */
+    const CHARACTERS = [
+      {
+        id: 'mom',
+        navLabel: '花媽',
+        name: '花媽',
+        alias: '（花太太／花師奶）',
+        jpName: '母（立花 翠 / Tachibana Midori）',
+        roleBadge: '一家之主（實質）',
+        theme: {
+          bgFrom: '#FFF0E5',
+          bgVia: '#FFD8BE',
+          bgTo: '#F4A261',
+          primary: '#E76F51',
+          secondary: '#F4A261',
+          soft: 'rgba(231, 111, 81, 0.14)',
+          border: 'rgba(231, 111, 81, 0.32)',
+          avatarBg: 'linear-gradient(145deg, #FFEDE0 0%, #F9C5A2 100%)'
+        },
+        tags: ['生於日本九州', '全職家庭主婦', '省錢達人', '大嗓門'],
+        background: '生於日本九州，全職家庭主婦。每天為了家計精打細算，是花家大小事務的靈魂人物與氣氛核心。',
+        personality: '個性<mark class="px-1.5 py-0.5 rounded-md bg-[#E76F51]/15 text-[#C84B2C] font-bold">熱情、嗓門大、說話直接</mark>，極度固執且<mark class="px-1.5 py-0.5 rounded-md bg-[#E76F51]/15 text-[#C84B2C] font-bold">愛貪小便宜</mark>。秉持「<mark class="px-1.5 py-0.5 rounded-md bg-[#E76F51]/15 text-[#C84B2C] font-bold">能省則省</mark>」的原則，常把剩菜變成新菜、把舊物發揮到極致，對雞毛蒜皮的小事非常執著，經常與橘子、柚子鬥嘴，但內心十分<mark class="px-1.5 py-0.5 rounded-md bg-[#E76F51]/15 text-[#C84B2C] font-bold">在意與包容花爸</mark>。',
+        signatures: [
+          '🎵 高歌「情熱の赤いバラ（熱情的紅玫瑰）」的震撼歌聲',
+          '💰 驚人的省錢執念與超市特價雷達',
+          '👄 標誌性的厚嘴唇與半月型大頭輪廓'
+        ],
+        // 花媽專屬精緻日系插畫 SVG（經典捲髮、半月形頭型、標誌性豐厚雙唇、橘紅圍裙）
+        svg: `
+          <svg viewBox="0 0 220 220" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="momGlow" cx="50%" cy="45%" r="50%">
+                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.85"/>
+                <stop offset="100%" stop-color="#F4A261" stop-opacity="0.25"/>
+              </radialGradient>
+            </defs>
+            <circle cx="110" cy="110" r="96" fill="url(#momGlow)"/>
+            <!-- 身體與暖橘圍裙 -->
+            <path d="M48 215 C52 168, 168 168, 172 215 Z" fill="#F4A261" stroke="#5A3825" stroke-width="3.5" stroke-linejoin="round"/>
+            <path d="M76 176 L144 176 L150 215 L70 215 Z" fill="#FFF8F0" stroke="#5A3825" stroke-width="3"/>
+            <path d="M88 176 L88 195 M132 176 L132 195" stroke="#E76F51" stroke-width="4" stroke-linecap="round"/>
+            <!-- 蓬鬆捲髮背面 -->
+            <path d="M55 110 C42 92, 48 64, 70 55 C82 36, 138 36, 150 55 C172 64, 178 92, 165 110 Z" fill="#3D2B24" stroke="#2A1C17" stroke-width="3.5"/>
+            <!-- 經典花媽半月/梨形臉龐 -->
+            <path d="M68 88 C68 54, 152 54, 152 88 C158 118, 164 152, 110 158 C56 152, 62 118, 68 88 Z" fill="#FFE0C8" stroke="#5A3825" stroke-width="3.5"/>
+            <!-- 捲捲瀏海 -->
+            <path d="M67 86 C76 72, 92 78, 102 68 C114 78, 130 70, 153 86 C150 56, 70 56, 67 86 Z" fill="#3D2B24" stroke="#2A1C17" stroke-width="3"/>
+            <!-- 眉毛與豆豆眼 -->
+            <path d="M84 92 Q92 86 100 92" fill="none" stroke="#3D2B24" stroke-width="3" stroke-linecap="round"/>
+            <path d="M120 92 Q128 86 136 92" fill="none" stroke="#3D2B24" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="92" cy="102" r="4.2" fill="#2A1C17"/>
+            <circle cx="128" cy="102" r="4.2" fill="#2A1C17"/>
+            <!-- 腮紅 -->
+            <ellipse cx="77" cy="116" rx="8" ry="5" fill="#F28482" opacity="0.55"/>
+            <ellipse cx="143" cy="116" rx="8" ry="5" fill="#F28482" opacity="0.55"/>
+            <!-- 小鼻子 -->
+            <path d="M108 107 Q112 113 107 116" fill="none" stroke="#5A3825" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- 招牌厚實大嘴唇（唱歌熱情版） -->
+            <path d="M84 131 C94 121, 126 121, 136 131 C128 135, 92 135, 84 131 Z" fill="#E76F51" stroke="#5A3825" stroke-width="2.8" stroke-linejoin="round"/>
+            <path d="M86 132 C98 144, 122 144, 134 132 Z" fill="#9E2A2B"/>
+            <path d="M84 133 C94 148, 126 148, 136 133 C126 139, 94 139, 84 133 Z" fill="#E76F51" stroke="#5A3825" stroke-width="2.8" stroke-linejoin="round"/>
+            <!-- 音符裝飾 -->
+            <path d="M174 58 L174 40 L186 36 L186 54" fill="none" stroke="#E76F51" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="170" cy="58" r="4" fill="#E76F51"/>
+            <circle cx="182" cy="54" r="4" fill="#E76F51"/>
+          </svg>
+        `
+      },
+      {
+        id: 'dad',
+        navLabel: '花爸',
+        name: '花爸',
+        alias: '（花先生／花老爺）',
+        jpName: '父（立花 仁 / Tachibana Jin）',
+        roleBadge: '我行我素上班族',
+        theme: {
+          bgFrom: '#EEF5EC',
+          bgVia: '#D5E5D0',
+          bgTo: '#8AB17D',
+          primary: '#588157',
+          secondary: '#8AB17D',
+          soft: 'rgba(88, 129, 87, 0.14)',
+          border: 'rgba(88, 129, 87, 0.32)',
+          avatarBg: 'linear-gradient(145deg, #F1F8EF 0%, #C6DEC0 100%)'
+        },
+        tags: ['生於九州', '中年上班族', '西裝通勤', '沉默寡言'],
+        background: '生於九州的中年上班族，每天穿西裝通勤。在家裡總是安靜看報紙、喝啤酒，過著步調完全不受干擾的自我世界。',
+        personality: '<mark class="px-1.5 py-0.5 rounded-md bg-[#588157]/15 text-[#3A5A40] font-bold">沉默寡言、我行我素</mark>、具傳統<mark class="px-1.5 py-0.5 rounded-md bg-[#588157]/15 text-[#3A5A40] font-bold">大男人主義</mark>。對家務與其他事情興趣缺缺，總是<mark class="px-1.5 py-0.5 rounded-md bg-[#588157]/15 text-[#3A5A40] font-bold">冷眼旁觀花媽的誇張舉動</mark>並當作娛樂，但若事情踩到自己的底線（如被打擾或酒醉後）則會突然暴躁或有各種<mark class="px-1.5 py-0.5 rounded-md bg-[#588157]/15 text-[#3A5A40] font-bold">奇特怪癖</mark>（如上廁所不關門）。',
+        signatures: [
+          '😐 面無表情地發出「嗯」、「啊」的單音節回應',
+          '🍺 酒醉後變得愛撒嬌或莫名堅持的反差萌',
+          '👔 筆挺西裝與頭頂稀疏的幾根經典頭髮'
+        ],
+        // 花爸專屬精緻日系插畫 SVG（橢圓光頭、幾根細髮、平靜眼神、上班族西裝領帶）
+        svg: `
+          <svg viewBox="0 0 220 220" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="dadGlow" cx="50%" cy="45%" r="50%">
+                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.85"/>
+                <stop offset="100%" stop-color="#8AB17D" stop-opacity="0.25"/>
+              </radialGradient>
+            </defs>
+            <circle cx="110" cy="110" r="96" fill="url(#dadGlow)"/>
+            <!-- 西裝外套與白襯衫 -->
+            <path d="M46 215 C52 168, 168 168, 174 215 Z" fill="#4A5759" stroke="#2F3E46" stroke-width="3.5" stroke-linejoin="round"/>
+            <polygon points="92,172 128,172 110,208" fill="#FFFFFF" stroke="#2F3E46" stroke-width="2.5"/>
+            <!-- 橄欖綠領帶 -->
+            <polygon points="105,175 115,175 118,205 110,213 102,205" fill="#588157" stroke="#2F3E46" stroke-width="2.2"/>
+            <!-- 耳朵 -->
+            <ellipse cx="64" cy="112" rx="8" ry="13" fill="#F7D4BC" stroke="#4A3B32" stroke-width="3"/>
+            <ellipse cx="156" cy="112" rx="8" ry="13" fill="#F7D4BC" stroke="#4A3B32" stroke-width="3"/>
+            <!-- 經典花爸圓潤蛋形頭顱 -->
+            <path d="M68 102 C68 52, 152 52, 152 102 C152 146, 134 162, 110 162 C86 162, 68 146, 68 102 Z" fill="#FBE0CC" stroke="#4A3B32" stroke-width="3.5"/>
+            <!-- 兩側短鬢角 -->
+            <path d="M68 94 C66 106, 70 116, 73 116 L73 94 Z" fill="#3B3A38"/>
+            <path d="M152 94 C154 106, 150 116, 147 116 L147 94 Z" fill="#3B3A38"/>
+            <!-- 頭頂經典幾根頭髮 -->
+            <path d="M102 56 Q99 44 95 42" fill="none" stroke="#3B3A38" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M110 54 Q110 41 112 39" fill="none" stroke="#3B3A38" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M118 56 Q122 44 126 43" fill="none" stroke="#3B3A38" stroke-width="2.5" stroke-linecap="round"/>
+            <!-- 粗平眉與半瞇淡定眼神 -->
+            <line x1="81" y1="92" x2="100" y2="93" stroke="#3B3A38" stroke-width="3.8" stroke-linecap="round"/>
+            <line x1="120" y1="93" x2="139" y2="92" stroke="#3B3A38" stroke-width="3.8" stroke-linecap="round"/>
+            <line x1="83" y1="103" x2="98" y2="103" stroke="#3B3A38" stroke-width="2.8" stroke-linecap="round"/>
+            <circle cx="90.5" cy="105" r="2.8" fill="#2A2927"/>
+            <line x1="122" y1="103" x2="137" y2="103" stroke="#3B3A38" stroke-width="2.8" stroke-linecap="round"/>
+            <circle cx="129.5" cy="105" r="2.8" fill="#2A2927"/>
+            <!-- 挺直鼻梁 -->
+            <path d="M110 100 L110 120 L105 123" fill="none" stroke="#4A3B32" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- 招牌「嗯」一字嘴型 -->
+            <path d="M98 137 Q110 135 122 137" fill="none" stroke="#4A3B32" stroke-width="3" stroke-linecap="round"/>
+            <!-- 對話氣泡「嗯。」 -->
+            <rect x="155" y="42" width="38" height="24" rx="12" fill="#FFFFFF" stroke="#588157" stroke-width="2.2"/>
+            <text x="174" y="58" text-anchor="middle" font-size="12" font-weight="bold" fill="#588157">嗯。</text>
+          </svg>
+        `
+      },
+      {
+        id: 'mikan',
+        navLabel: '橘子',
+        name: '橘子',
+        alias: '（花橘子／阿柑／Mikan）',
+        jpName: 'みかん（立花 みかん / Tachibana Mikan）',
+        roleBadge: '天真高中少女',
+        theme: {
+          bgFrom: '#E8F8F2',
+          bgVia: '#C7EDE0',
+          bgTo: '#76C893',
+          primary: '#34A0A4',
+          secondary: '#76C893',
+          soft: 'rgba(52, 160, 164, 0.14)',
+          border: 'rgba(52, 160, 164, 0.32)',
+          avatarBg: 'linear-gradient(145deg, #ECFAF5 0%, #BCE8D8 100%)'
+        },
+        tags: ['高中二年級', '暗戀岩木同學', '天然呆少女', '泰迪熊研究社'],
+        background: '高中二年級學生。每天充滿青春期少女的小煩惱，最喜歡下課後和好朋友小清在速食店聊天、分享點心。',
+        personality: '有些<mark class="px-1.5 py-0.5 rounded-md bg-[#34A0A4]/15 text-[#1E6091] font-bold">天然呆、多愁善感</mark>，對青春期戀愛充滿憧憬（例如<mark class="px-1.5 py-0.5 rounded-md bg-[#34A0A4]/15 text-[#1E6091] font-bold">暗戀同校的岩木同學</mark>）。常因花媽過於誇張或省錢的行徑而感到窘迫，跟媽媽鬥嘴時卻又常常講輸，是家裡最容易<mark class="px-1.5 py-0.5 rounded-md bg-[#34A0A4]/15 text-[#1E6091] font-bold">大驚小怪的氣氛製造者</mark>。',
+        signatures: [
+          '😮 發呆或無言時變成空心圓圈的「空白雙眼」',
+          '🍟 與好朋友小清在速食店聊八卦與戀愛煩惱',
+          '🎀 兩側翹起的俏皮短髮與高中水手服領結'
+        ],
+        // 橘子專屬精緻日系插畫 SVG（雙側微翹短髮、水手服、發呆圓圈眼與紅潤臉頰）
+        svg: `
+          <svg viewBox="0 0 220 220" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="mikanGlow" cx="50%" cy="45%" r="50%">
+                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.88"/>
+                <stop offset="100%" stop-color="#76C893" stop-opacity="0.25"/>
+              </radialGradient>
+            </defs>
+            <circle cx="110" cy="110" r="96" fill="url(#mikanGlow)"/>
+            <!-- 頭髮背面與兩側微翹髮尾 -->
+            <path d="M58 122 C44 132, 42 144, 54 146 C62 147, 68 140, 72 134 Z" fill="#4A2C22" stroke="#2D1A14" stroke-width="3"/>
+            <path d="M162 122 C176 132, 178 144, 166 146 C158 147, 152 140, 148 134 Z" fill="#4A2C22" stroke="#2D1A14" stroke-width="3"/>
+            <path d="M60 98 C56 54, 164 54, 160 98 L162 134 L58 134 Z" fill="#4A2C22" stroke="#2D1A14" stroke-width="3.5"/>
+            <!-- 高中制服與湖水藍領結 -->
+            <path d="M52 215 C58 172, 162 172, 168 215 Z" fill="#FFFFFF" stroke="#2D3A3A" stroke-width="3.2"/>
+            <path d="M78 175 L110 202 L142 175" fill="none" stroke="#34A0A4" stroke-width="6" stroke-linejoin="round"/>
+            <polygon points="102,196 118,196 122,212 110,206 98,212" fill="#52B69A" stroke="#2D3A3A" stroke-width="2"/>
+            <!-- 橘子圓潤臉龐 -->
+            <path d="M68 96 C68 62, 152 62, 152 96 C152 138, 134 156, 110 156 C86 156, 68 138, 68 96 Z" fill="#FFE4D0" stroke="#4A2C22" stroke-width="3.3"/>
+            <!-- 齊瀏海 -->
+            <path d="M67 98 C72 64, 148 64, 153 98 C142 92, 134 96, 126 88 C118 96, 104 96, 94 88 C86 96, 76 92, 67 98 Z" fill="#4A2C22" stroke="#2D1A14" stroke-width="3"/>
+            <!-- 八字困擾眉 -->
+            <path d="M81 98 Q89 94 97 99" fill="none" stroke="#4A2C22" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="M123 99 Q131 94 139 98" fill="none" stroke="#4A2C22" stroke-width="2.6" stroke-linecap="round"/>
+            <!-- 招牌天然呆空白圓圈眼 -->
+            <circle cx="90" cy="111" r="7.5" fill="#FFFFFF" stroke="#2D1A14" stroke-width="2.8"/>
+            <circle cx="130" cy="111" r="7.5" fill="#FFFFFF" stroke="#2D1A14" stroke-width="2.8"/>
+            <!-- 粉嫩腮紅 -->
+            <ellipse cx="77" cy="123" rx="7" ry="4.5" fill="#FF8FA3" opacity="0.55"/>
+            <ellipse cx="143" cy="123" rx="7" ry="4.5" fill="#FF8FA3" opacity="0.55"/>
+            <!-- 小巧驚訝「o」嘴型 -->
+            <ellipse cx="110" cy="135" rx="5.5" ry="6.5" fill="#F28482" stroke="#4A2C22" stroke-width="2.5"/>
+            <!-- 青春小愛心裝飾 -->
+            <path d="M172 62 C172 57, 179 57, 179 62 C179 57, 186 57, 186 62 C186 68, 179 73, 179 73 C179 73, 172 68, 172 62 Z" fill="#52B69A"/>
+          </svg>
+        `
+      },
+      {
+        id: 'yuzuhiko',
+        navLabel: '柚子',
+        name: '柚子',
+        alias: '（花柚子／阿桔／Yuzuhiko）',
+        jpName: 'ユズヒコ（立花 ユズヒコ / Tachibana Yuzuhiko）',
+        roleBadge: '冷靜觀察家少年',
+        theme: {
+          bgFrom: '#FDF0F2',
+          bgVia: '#F7D6DC',
+          bgTo: '#E5989B',
+          primary: '#B5838D',
+          secondary: '#E5989B',
+          soft: 'rgba(181, 131, 141, 0.15)',
+          border: 'rgba(181, 131, 141, 0.34)',
+          avatarBg: 'linear-gradient(145deg, #FFF3F5 0%, #F2CFD5 100%)'
+        },
+        tags: ['國中二年級', '棒球社社員', '冷知識達人', '低調人氣王'],
+        background: '國中二年級學生，國立中學棒球社社員。相較於家裡的大嗓門母女，他總是安靜地在房間裡享受自己的小宇宙。',
+        personality: '個性<mark class="px-1.5 py-0.5 rounded-md bg-[#B5838D]/18 text-[#7F4F59] font-bold">冷靜、心思細膩、早熟</mark>，與神經大條的媽媽和姊姊形成強烈對比。喜歡研究各種<mark class="px-1.5 py-0.5 rounded-md bg-[#B5838D]/18 text-[#7F4F59] font-bold">冷知識或日常小事物</mark>（如觀察便利商店店員、思考人生哲學），有自己的死忠粉絲團，但本人對此非常<mark class="px-1.5 py-0.5 rounded-md bg-[#B5838D]/18 text-[#7F4F59] font-bold">低調害羞</mark>。',
+        signatures: [
+          '😌 閉眼微笑、一臉無奈又看透一切的「ω」貓咪嘴型',
+          '🎧 躲在房間戴耳機聽音樂配洋芋片零食',
+          '🧢 國中生立領制服與蓬鬆自然捲短髮'
+        ],
+        // 柚子專屬精緻日系插畫 SVG（蓬鬆中分短髮、閉眼淡定弧線、招牌 ω 嘴型、立領制服）
+        svg: `
+          <svg viewBox="0 0 220 220" class="w-full h-full" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="yuzuGlow" cx="50%" cy="45%" r="50%">
+                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.88"/>
+                <stop offset="100%" stop-color="#E5989B" stop-opacity="0.25"/>
+              </radialGradient>
+            </defs>
+            <circle cx="110" cy="110" r="96" fill="url(#yuzuGlow)"/>
+            <!-- 中學深色立領制服 -->
+            <path d="M54 215 C60 172, 160 172, 166 215 Z" fill="#3D405B" stroke="#232536" stroke-width="3.2"/>
+            <rect x="96" y="168" width="28" height="16" rx="4" fill="#2B2D42" stroke="#232536" stroke-width="2.5"/>
+            <line x1="110" y1="168" x2="110" y2="184" stroke="#E5989B" stroke-width="2"/>
+            <!-- 蓬鬆頭髮外輪廓 -->
+            <path d="M62 108 C54 64, 86 46, 110 50 C134 46, 166 64, 158 108 Z" fill="#3B2F2F" stroke="#241C1C" stroke-width="3.5"/>
+            <!-- 柚子圓臉 -->
+            <path d="M70 96 C70 64, 150 64, 150 96 C150 136, 134 156, 110 156 C86 156, 70 136, 70 96 Z" fill="#FFE5D4" stroke="#3B2F2F" stroke-width="3.3"/>
+            <!-- 招牌中分微翹瀏海 -->
+            <path d="M68 100 C68 62, 108 60, 110 78 C112 60, 152 62, 152 100 C142 86, 124 84, 110 92 C96 84, 78 86, 68 100 Z" fill="#3B2F2F" stroke="#241C1C" stroke-width="3" stroke-linejoin="round"/>
+            <!-- 淡淡平眉 -->
+            <path d="M82 99 Q90 97 98 99" fill="none" stroke="#3B2F2F" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M122 99 Q130 97 138 99" fill="none" stroke="#3B2F2F" stroke-width="2.4" stroke-linecap="round"/>
+            <!-- 招牌閉眼微笑弧線 -->
+            <path d="M82 112 Q90 106 98 112" fill="none" stroke="#241C1C" stroke-width="3" stroke-linecap="round"/>
+            <path d="M122 112 Q130 106 138 112" fill="none" stroke="#241C1C" stroke-width="3" stroke-linecap="round"/>
+            <!-- 微微害羞紅暈 -->
+            <ellipse cx="79" cy="121" rx="6.5" ry="4" fill="#E5989B" opacity="0.55"/>
+            <ellipse cx="141" cy="121" rx="6.5" ry="4" fill="#E5989B" opacity="0.55"/>
+            <!-- 經典「ω」貓咪微笑嘴型 -->
+            <path d="M100 132 Q105 138 110 132 Q115 138 120 132" fill="none" stroke="#3B2F2F" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- 音樂耳機小圖示裝飾 -->
+            <path d="M168 62 C168 52, 184 52, 184 62" fill="none" stroke="#B5838D" stroke-width="2.8" stroke-linecap="round"/>
+            <rect x="165" y="60" width="5" height="9" rx="2.5" fill="#B5838D"/>
+            <rect x="182" y="60" width="5" height="9" rx="2.5" fill="#B5838D"/>
+          </svg>
+        `
+      }
+    ];
+
+    /**
+     * ============================================================================
+     * 2. Web Audio API 清脆氣泡按鍵音效引擎（零外部音訊依賴）
+     * ============================================================================
+     */
+    const SoundEngine = {
+      enabled: true,
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      },
+      playBubble(pitchMultiplier = 1) {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          // 清脆氣泡頻率上揚曲線
+          osc.type = 'sine';
+          const baseFreq = 420 * pitchMultiplier;
+          osc.frequency.setValueAtTime(baseFreq, now);
+          osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.85, now + 0.085);
+
+          // 柔和包絡避免爆音
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(0.14, now + 0.015);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.095);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + 0.1);
+        } catch (e) {
+          // 忽略瀏覽器自動播放限制錯誤
+        }
+      }
+    };
+
+    /**
+     * ============================================================================
+     * 3. 應用程式狀態管理與 UI 渲染邏輯
+     * ============================================================================
+     */
+    const STORAGE_KEY = 'atashinchi_last_character_idx';
+    let currentIndex = 0;
+
+    // 讀取 localStorage 記憶的上次瀏覽角色
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved !== null) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed < CHARACTERS.length) {
+          currentIndex = parsed;
+        }
+      }
+    } catch (e) {}
+
+    // DOM 元素參照
+    const rootStyle = document.documentElement.style;
+    const metaThemeColor = document.getElementById('meta-theme-color');
+    const navPill = document.getElementById('nav-pill');
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const characterStage = document.getElementById('character-stage');
+    const heroRoleBadge = document.getElementById('hero-role-badge');
+    const heroAvatarContainer = document.getElementById('hero-avatar-container');
+    const heroName = document.getElementById('hero-name');
+    const heroAlias = document.getElementById('hero-alias');
+    const heroJpName = document.getElementById('hero-jp-name');
+    const profileTags = document.getElementById('profile-tags');
+    const profileBackground = document.getElementById('profile-background');
+    const profilePersonality = document.getElementById('profile-personality');
+    const profileSignatures = document.getElementById('profile-signatures');
+    const dotsIndicator = document.getElementById('dots-indicator').children;
+
+    function renderCharacter(index, direction = 'right') {
+      const char = CHARACTERS[index];
+      if (!char) return;
+
+      // 1. 更新 CSS 主題變數（背景漸層與強調色平滑過渡）
+      rootStyle.setProperty('--bg-from', char.theme.bgFrom);
+      rootStyle.setProperty('--bg-via', char.theme.bgVia);
+      rootStyle.setProperty('--bg-to', char.theme.bgTo);
+      rootStyle.setProperty('--accent-primary', char.theme.primary);
+      rootStyle.setProperty('--accent-secondary', char.theme.secondary);
+      rootStyle.setProperty('--accent-soft', char.theme.soft);
+      rootStyle.setProperty('--accent-border', char.theme.border);
+
+      // 2. 動態更新 PWA 狀態列 theme-color
+      if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', char.theme.secondary);
+      }
+
+      // 3. 更新 Segmented Control 膠囊位置與文字狀態
+      navPill.style.transform = `translateX(${index * 100}%)`;
+      navButtons.forEach((btn, idx) => {
+        if (idx === index) {
+          btn.classList.remove('text-slate-600', 'font-bold');
+          btn.classList.add('text-white', 'font-extrabold', 'scale-105');
+        } else {
+          btn.classList.remove('text-white', 'font-extrabold', 'scale-105');
+          btn.classList.add('text-slate-600', 'font-bold');
+        }
+      });
+
+      // 4. 更新底部圓點指示器
+      Array.from(dotsIndicator).forEach((dot, idx) => {
+        if (idx === index) {
+          dot.className = 'w-5 h-2 rounded-full theme-bg transition-all duration-300';
+        } else {
+          dot.className = 'w-2 h-2 rounded-full bg-slate-400/40 transition-all duration-300';
+        }
+      });
+
+      // 5. 觸發內容區淡入與微幅滑動動畫
+      characterStage.classList.remove('anim-slide-right', 'anim-slide-left');
+      void characterStage.offsetWidth; // 強制 reflow 重新觸發動畫
+      characterStage.classList.add(direction === 'left' ? 'anim-slide-left' : 'anim-slide-right');
+
+      // 6. 填入角色視覺與檔案資料
+      heroRoleBadge.textContent = char.roleBadge;
+      heroAvatarContainer.style.background = char.theme.avatarBg;
+      heroAvatarContainer.innerHTML = char.svg;
+      heroName.textContent = char.name;
+      heroAlias.textContent = char.alias;
+      heroJpName.textContent = char.jpName;
+
+      // 標籤式基本資料
+      profileTags.innerHTML = char.tags
+        .map(
+          (tag) =>
+            `<span class="px-2.5 py-1 rounded-xl text-xs font-bold theme-bg-soft theme-text border theme-border"># ${tag}</span>`
+        )
+        .join('');
+
+      profileBackground.textContent = char.background;
+      profilePersonality.innerHTML = char.personality;
+      profileSignatures.innerHTML = char.signatures
+        .map((item) => `<li class="leading-relaxed">${item}</li>`)
+        .join('');
+
+      // 7. 記住使用者當前瀏覽角色
+      try {
+        localStorage.setItem(STORAGE_KEY, String(index));
+      } catch (e) {}
+    }
+
+    function switchCharacter(newIndex, direction) {
+      const total = CHARACTERS.length;
+      const normalized = (newIndex + total) % total;
+      if (normalized === currentIndex) return;
+
+      const autoDir = direction || (normalized > currentIndex ? 'right' : 'left');
+      currentIndex = normalized;
+
+      // 依角色給予略微不同的清脆音高
+      const pitches = [1.0, 0.88, 1.15, 1.08];
+      SoundEngine.playBubble(pitches[currentIndex]);
+      renderCharacter(currentIndex, autoDir);
+    }
+
+    // 導覽列按鈕點擊事件
+    navButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const targetIdx = parseInt(btn.dataset.index, 10);
+        switchCharacter(targetIdx);
+      });
+    });
+
+    // 上一位 / 下一位按鈕
+    document.getElementById('btn-prev').addEventListener('click', () => {
+      switchCharacter(currentIndex - 1, 'left');
+    });
+    document.getElementById('btn-next').addEventListener('click', () => {
+      switchCharacter(currentIndex + 1, 'right');
+    });
+
+    // 鍵盤左右方向鍵支援（桌面測試更順手）
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') switchCharacter(currentIndex - 1, 'left');
+      if (e.key === 'ArrowRight') switchCharacter(currentIndex + 1, 'right');
+    });
+
+    /**
+     * ============================================================================
+     * 4. 原生手感左右滑動手勢偵測 (Touch Swipe)
+     * ============================================================================
+     */
+    const swipeArea = document.getElementById('swipe-area');
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    swipeArea.addEventListener(
+      'touchstart',
+      (e) => {
+        if (e.touches.length === 1) {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        }
+      },
+      { passive: true }
+    );
+
+    swipeArea.addEventListener(
+      'touchend',
+      (e) => {
+        if (e.changedTouches.length === 1) {
+          const deltaX = e.changedTouches[0].clientX - touchStartX;
+          const deltaY = e.changedTouches[0].clientY - touchStartY;
+
+          // 確保為水平滑動而非垂直捲動，且滑動距離超過 45px
+          if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.3) {
+            if (deltaX < 0) {
+              // 向左滑 -> 下一位
+              switchCharacter(currentIndex + 1, 'right');
+            } else {
+              // 向右滑 -> 上一位
+              switchCharacter(currentIndex - 1, 'left');
+            }
+          }
+        }
+      },
+      { passive: true }
+    );
+
+    /**
+     * ============================================================================
+     * 5. 音效開關與 PWA 安裝提示互動
+     * ============================================================================
+     */
+    const btnSound = document.getElementById('btn-sound');
+    const iconSoundOn = document.getElementById('icon-sound-on');
+    const iconSoundOff = document.getElementById('icon-sound-off');
+
+    btnSound.addEventListener('click', () => {
+      SoundEngine.enabled = !SoundEngine.enabled;
+      if (SoundEngine.enabled) {
+        iconSoundOn.classList.remove('hidden');
+        iconSoundOff.classList.add('hidden');
+        SoundEngine.playBubble(1.25);
+      } else {
+        iconSoundOn.classList.add('hidden');
+        iconSoundOff.classList.remove('hidden');
+      }
+    });
+
+    // 攔截瀏覽器原生 PWA 安裝事件 (beforeinstallprompt)
+    let deferredPrompt = null;
+    const installModal = document.getElementById('install-modal');
+    const btnTriggerPrompt = document.getElementById('btn-trigger-prompt');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      btnTriggerPrompt.classList.remove('hidden');
+    });
+
+    document.getElementById('btn-install').addEventListener('click', () => {
+      SoundEngine.playBubble(1.1);
+      installModal.classList.remove('hidden');
+      installModal.classList.add('flex');
+    });
+
+    const closeModal = () => {
+      installModal.classList.add('hidden');
+      installModal.classList.remove('flex');
+    };
+
+    document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+    document.getElementById('btn-modal-ok').addEventListener('click', closeModal);
+    installModal.addEventListener('click', (e) => {
+      if (e.target === installModal) closeModal();
+    });
+
+    btnTriggerPrompt.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      btnTriggerPrompt.classList.add('hidden');
+      closeModal();
+    });
+
+    /**
+     * ============================================================================
+     * 6. 單檔自包含 PWA 架構：動態生成 SVG App Icon、Manifest 與 Service Worker
+     * ============================================================================
+     */
+    (function setupSingleFilePWA() {
+      try {
+        // 1. 自動生成高質感花媽主題 SVG App Icon (512x512)
+        const appIconSvg = `
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+            <defs>
+              <linearGradient id="iconBg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#F4A261"/>
+                <stop offset="100%" stop-color="#E76F51"/>
+              </linearGradient>
+            </defs>
+            <rect width="512" height="512" rx="115" fill="url(#iconBg)"/>
+            <circle cx="256" cy="268" r="158" fill="#FFE0C8" stroke="#5A3825" stroke-width="12"/>
+            <path d="M126 218 C142 120, 370 120, 386 218 C355 190, 315 205, 290 182 C265 205, 225 205, 200 182 C175 205, 145 190, 126 218 Z" fill="#3D2B24"/>
+            <circle cx="204" cy="248" r="13" fill="#2A1C17"/>
+            <circle cx="308" cy="248" r="13" fill="#2A1C17"/>
+            <path d="M188 326 C215 298, 297 298, 324 326 C300 336, 212 336, 188 326 Z" fill="#E76F51" stroke="#5A3825" stroke-width="9"/>
+            <path d="M188 330 C215 362, 297 362, 324 330 C300 344, 212 344, 188 330 Z" fill="#E76F51" stroke="#5A3825" stroke-width="9"/>
+          </svg>
+        `.trim();
+
+        const iconDataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(appIconSvg);
+        const appleIconLink = document.getElementById('apple-touch-icon');
+        if (appleIconLink) appleIconLink.href = iconDataUri;
+
+        // 2. 動態生成 Web App Manifest Data URI
+        const manifestData = {
+          name: '我們這一家角色圖鑑 | Atashin\'chi Guide',
+          short_name: '我們這一家',
+          description: '具備原生 Mobile App 體驗的《我們這一家》角色圖鑑展示應用程式',
+          start_url: window.location.href,
+          display: 'standalone',
+          orientation: 'portrait',
+          background_color: '#FFF1E6',
+          theme_color: '#F4A261',
+          icons: [
+            {
+              src: iconDataUri,
+              sizes: '192x192 512x512',
+              type: 'image/svg+xml',
+              purpose: 'any maskable'
+            }
+          ]
+        };
+
+        const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/manifest+json' });
+        const manifestUrl = URL.createObjectURL(manifestBlob);
+        const manifestLink = document.getElementById('pwa-manifest');
+        if (manifestLink) manifestLink.href = manifestUrl;
+
+        // 3. 透過 Blob URL 註冊離線快取 Service Worker
+        if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost')) {
+          const swCode = `
+            const CACHE_NAME = 'atashinchi-guide-v1';
+            self.addEventListener('install', (event) => {
+              self.skipWaiting();
+              event.waitUntil(
+                caches.open(CACHE_NAME).then((cache) => {
+                  return cache.addAll([self.location.origin + self.location.pathname]).catch(() => {});
+                })
+              );
+            });
+            self.addEventListener('activate', (event) => {
+              event.waitUntil(self.clients.claim());
+            });
+            self.addEventListener('fetch', (event) => {
+              if (event.request.method !== 'GET') return;
+              event.respondWith(
+                caches.match(event.request).then((cached) => {
+                  const networked = fetch(event.request)
+                    .then((res) => {
+                      if (res && res.status === 200) {
+                        const clone = res.clone();
+                        caches.open(CACHE_NAME).then((c) => c.put(event.request, clone));
+                      }
+                      return res;
+                    })
+                    .catch(() => cached);
+                  return cached || networked;
+                })
+              );
+            });
+          `;
+          const swBlob = new Blob([swCode], { type: 'application/javascript' });
+          const swUrl = URL.createObjectURL(swBlob);
+          navigator.serviceWorker.register(swUrl).catch(() => {});
+        }
+      } catch (err) {
+        // 單檔預覽環境下容錯處理
+      }
+    })();
+
+    // 初始化渲染記憶的角色畫面
+    renderCharacter(currentIndex, 'right');
+  </script>
+</body>
+</html>
